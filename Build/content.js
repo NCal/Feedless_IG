@@ -806,6 +806,17 @@
         <button type="button" class="ii-new">
           Another quote
         </button>
+
+        <div class="support">
+         <a
+          class="ii-support"
+          href="https://buymeacoffee.com/ncal"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ☕ Buy Me a Coffee
+        </a>
+        </div>
       </div>
     `;
 

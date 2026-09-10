@@ -8,6 +8,10 @@
   text-align: center;
   box-sizing: border-box;
 }
+.support {
+  margin-top: 22px;
+}
+
 .ii-card {
   box-sizing: border-box;
   width: 100%;
