@@ -36,7 +36,7 @@ All processing happens locally in your browser.
 No — only the home feed is replaced. You can still message, post, and browse profiles.
 
 **Will it break when Instagram updates?**
-Possibly — Instagram changes its markup frequently.
+Possibly — Instagram changes its markup frequently. I built this in ten minutes... 
 
 **Can I disable it temporarily?**
 Yes — pin the extension and toggle it off from the toolbar whenever you want the feed back.
