@@ -770,13 +770,34 @@
 
   function isFeedPage() {
     if (!isInstagram()) return false;
-
+  
     const path = getPath();
-
+  
     return (
       path === "/" ||
+      path === "/reels" ||
+      path.startsWith("/reels/")
+    );
+  }
+  
+  function isExplorePage() {
+    if (!isInstagram()) return false;
+  
+    const path = getPath();
+  
+    return (
       path === "/explore" ||
-      path === "/reels"
+      path.startsWith("/explore/")
+    );
+  }
+  
+  function isExploreSearchPage() {
+    if (!isExplorePage()) return false;
+  
+    const path = getPath();
+  
+    return (
+      path.startsWith("/explore/search")
     );
   }
 
@@ -891,6 +912,55 @@
     });
   }
 
+// --------------------------------------------------
+// EXPLORE PAGE
+// --------------------------------------------------
+
+function hideExploreSuggestions() {
+  if (!isExplorePage() || isExploreSearchPage()) {
+    restoreExploreSuggestions();
+    return;
+  }
+
+  const main = document.querySelector("main");
+
+  if (!main) return;
+
+  /*
+   * On the normal Explore page, hide Instagram's
+   * photo/reel recommendation tiles while leaving
+   * the search interface and navigation available.
+   *
+   * We hide the individual media links rather than
+   * hiding <main>, because <main> also contains the
+   * search interface.
+   */
+
+  const mediaLinks = main.querySelectorAll(
+    'a[href^="/p/"], a[href^="/reel/"], a[href^="/tv/"]'
+  );
+
+  mediaLinks.forEach((link) => {
+    if (link.dataset.inspirationExploreHidden === "true") {
+      return;
+    }
+
+    link.dataset.inspirationExploreHidden = "true";
+    link.style.display = "none";
+  });
+}
+
+function restoreExploreSuggestions() {
+  const hiddenLinks = document.querySelectorAll(
+    '[data-inspiration-explore-hidden="true"]'
+  );
+
+  hiddenLinks.forEach((link) => {
+    link.style.display = "";
+    delete link.dataset.inspirationExploreHidden;
+  });
+}
+
   // --------------------------------------------------
   // FIND INSTAGRAM FEED
   // --------------------------------------------------
@@ -915,19 +985,37 @@
 
   function attempt() {
     /*
-     * If we're on a profile, DM, settings page, etc.,
-     * make sure the quote replacement is removed.
+     * Explore gets its own behavior:
+     * keep search available, but remove the
+     * default recommendation content.
      */
-    if (!isFeedPage()) {
+    if (isExplorePage()) {
       restoreFeed();
+      hideExploreSuggestions();
       return;
     }
-
-    const feed = findFeed();
-
-    if (feed) {
-      hideFeed(feed);
+  
+    /*
+     * Normal feed pages: Home and Reels.
+     */
+    if (isFeedPage()) {
+      restoreExploreSuggestions();
+  
+      const feed = findFeed();
+  
+      if (feed) {
+        hideFeed(feed);
+      }
+  
+      return;
     }
+  
+    /*
+     * Any other Instagram page:
+     * restore everything.
+     */
+    restoreFeed();
+    restoreExploreSuggestions();
   }
 
   // --------------------------------------------------
@@ -964,16 +1052,27 @@
   };
 
   // Instagram may also use replaceState().
-  const originalReplaceState = history.replaceState;
+const originalReplaceState = history.replaceState;
 
-  history.replaceState = function (...args) {
-    const result =
-      originalReplaceState.apply(this, args);
+history.replaceState = function (...args) {
+  const result =
+    originalReplaceState.apply(this, args);
 
+  handleNavigation();
+
+  return result;
+};
+
+// Fallback for Instagram URL changes that don't
+// trigger pushState/replaceState/popstate.
+let lastPath = location.pathname;
+
+setInterval(() => {
+  if (location.pathname !== lastPath) {
+    lastPath = location.pathname;
     handleNavigation();
-
-    return result;
-  };
+  }
+}, 250);
 
   // --------------------------------------------------
   // DOM CHANGES
