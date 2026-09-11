@@ -742,94 +742,147 @@
 
   ];
 
-  const host = location.hostname;
 
-  // --------------------------------------------------
-  // QUOTES
-  // --------------------------------------------------
+const host = location.hostname;
 
-  function getRandomQuote() {
-    return QUOTES[Math.floor(Math.random() * QUOTES.length)];
-  }
+// --------------------------------------------------
+// QUOTES
+// --------------------------------------------------
 
-  // --------------------------------------------------
-  // INSTAGRAM PAGE DETECTION
-  // --------------------------------------------------
+function getRandomQuote() {
+  return QUOTES[Math.floor(Math.random() * QUOTES.length)];
+}
 
-  function getPath() {
-    // Normalize:
-    // "/"          -> "/"
-    // "/explore/"  -> "/explore"
-    // "/reels/"    -> "/reels"
-    return location.pathname.replace(/\/+$/, "") || "/";
-  }
+// --------------------------------------------------
+// INSTAGRAM PAGE DETECTION
+// --------------------------------------------------
 
-  function isInstagram() {
-    return host.includes("instagram.com");
-  }
+function getPath() {
+  // Normalize:
+  // "/"          -> "/"
+  // "/explore/"  -> "/explore"
+  // "/reels/"    -> "/reels"
+  return location.pathname.replace(/\/+$/, "") || "/";
+}
 
-  function isFeedPage() {
-    if (!isInstagram()) return false;
-  
-    const path = getPath();
-  
-    return (
-      path === "/" ||
-      path === "/reels" ||
-      path.startsWith("/reels/")
-    );
-  }
-  
-  function isExplorePage() {
-    if (!isInstagram()) return false;
-  
-    const path = getPath();
-  
-    return (
-      path === "/explore" ||
-      path.startsWith("/explore/")
-    );
-  }
-  
-  function isExploreSearchPage() {
-    if (!isExplorePage()) return false;
-  
-    const path = getPath();
-  
-    return (
-      path.startsWith("/explore/search")
-    );
-  }
+function isInstagram() {
+  return host.includes("instagram.com");
+}
 
-  // --------------------------------------------------
-  // QUOTE REPLACEMENT
-  // --------------------------------------------------
+function isFeedPage() {
+  if (!isInstagram()) return false;
 
-  function createReplacement() {
-    if (document.getElementById("inspiration-instead")) {
-      return null;
+  const path = getPath();
+
+  // Only the Home page is treated as the quote feed.
+  // Reels are blocked and redirected to Home.
+  return path === "/";
+}
+
+function isReelsPage() {
+  if (!isInstagram()) return false;
+
+  const path = getPath();
+
+  return (
+    path === "/reels" ||
+    path.startsWith("/reels/")
+  );
+}
+
+function isExplorePage() {
+  if (!isInstagram()) return false;
+
+  const path = getPath();
+
+  return (
+    path === "/explore" ||
+    path.startsWith("/explore/")
+  );
+}
+
+function isExploreSearchPage() {
+  if (!isExplorePage()) return false;
+
+  const path = getPath();
+
+  return path.startsWith("/explore/search");
+}
+
+// --------------------------------------------------
+// BLOCK REELS
+// --------------------------------------------------
+
+function blockReelsNavigation() {
+  if (!isReelsPage()) return;
+
+  window.location.replace("https://www.instagram.com/");
+}
+
+// --------------------------------------------------
+// INTERCEPT REELS CLICKS
+// --------------------------------------------------
+
+document.addEventListener(
+  "click",
+  (event) => {
+    if (!isInstagram()) return;
+
+    const link = event.target.closest("a");
+
+    if (!link) return;
+
+    const href = link.getAttribute("href");
+
+    if (!href) return;
+
+    /*
+     * Catch Instagram's Reels link before Instagram's
+     * SPA navigation gets a chance to process it.
+     */
+    if (
+      href === "/reels" ||
+      href.startsWith("/reels/")
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      window.location.replace("https://www.instagram.com/");
     }
+  },
+  true
+);
 
-    const [text, author] = getRandomQuote();
+// --------------------------------------------------
+// QUOTE REPLACEMENT
+// --------------------------------------------------
 
-    const wrapper = document.createElement("div");
+function createReplacement() {
+  if (document.getElementById("inspiration-instead")) {
+    return null;
+  }
 
-    wrapper.id = "inspiration-instead";
+  const [text, author] = getRandomQuote();
 
-    wrapper.innerHTML = `
-      <div class="ii-card">
-        <div class="ii-label">FEEDLESS IG</div>
+  const wrapper = document.createElement("div");
 
-        <blockquote></blockquote>
+  wrapper.id = "inspiration-instead";
 
-        <div class="ii-author"></div>
+  wrapper.innerHTML = `
+    <div class="ii-card">
+      <div class="ii-label">FEEDLESS IG</div>
 
-        <button type="button" class="ii-new">
-          Another quote
-        </button>
+      <blockquote></blockquote>
 
-        <div class="support">
-         <a
+      <div class="ii-author"></div>
+
+      <button type="button" class="ii-new">
+        Another quote
+      </button>
+
+      <div class="support">
+        <a
           class="ii-support"
           href="https://buymeacoffee.com/ncal"
           target="_blank"
@@ -837,80 +890,80 @@
         >
           ☕ Buy Me a Coffee
         </a>
-        </div>
       </div>
-    `;
+    </div>
+  `;
+
+  wrapper.querySelector("blockquote").textContent =
+    `“${text}”`;
+
+  wrapper.querySelector(".ii-author").textContent =
+    `— ${author}`;
+
+  wrapper.querySelector(".ii-new").addEventListener("click", () => {
+    const [newText, newAuthor] = getRandomQuote();
 
     wrapper.querySelector("blockquote").textContent =
-      `“${text}”`;
+      `“${newText}”`;
 
     wrapper.querySelector(".ii-author").textContent =
-      `— ${author}`;
+      `— ${newAuthor}`;
+  });
 
-    wrapper.querySelector(".ii-new").addEventListener("click", () => {
-      const [newText, newAuthor] = getRandomQuote();
+  return wrapper;
+}
 
-      wrapper.querySelector("blockquote").textContent =
-        `“${newText}”`;
+// --------------------------------------------------
+// HIDE FEED
+// --------------------------------------------------
 
-      wrapper.querySelector(".ii-author").textContent =
-        `— ${newAuthor}`;
-    });
+function hideFeed(feed) {
+  if (!feed) return;
 
-    return wrapper;
+  // Already hidden.
+  if (feed.dataset.inspirationReplaced === "true") {
+    return;
   }
 
-  // --------------------------------------------------
-  // HIDE FEED
-  // --------------------------------------------------
+  const replacement = createReplacement();
 
-  function hideFeed(feed) {
-    if (!feed) return;
+  if (!replacement) return;
 
-    // Already hidden.
-    if (feed.dataset.inspirationReplaced === "true") {
-      return;
-    }
+  // Remember the original element so it can be restored
+  // when the user navigates away from the feed.
+  feed.dataset.inspirationReplaced = "true";
 
-    const replacement = createReplacement();
+  feed.style.display = "none";
 
-    if (!replacement) return;
+  feed.parentNode.insertBefore(
+    replacement,
+    feed
+  );
+}
 
-    // Remember the original element so it can be restored
-    // when the user navigates away from the feed.
-    feed.dataset.inspirationReplaced = "true";
+// --------------------------------------------------
+// RESTORE ORIGINAL PAGE
+// --------------------------------------------------
 
-    feed.style.display = "none";
+function restoreFeed() {
+  const replacement =
+    document.getElementById("inspiration-instead");
 
-    feed.parentNode.insertBefore(
-      replacement,
-      feed
+  if (replacement) {
+    replacement.remove();
+  }
+
+  const hiddenFeeds =
+    document.querySelectorAll(
+      '[data-inspiration-replaced="true"]'
     );
-  }
 
-  // --------------------------------------------------
-  // RESTORE ORIGINAL PAGE
-  // --------------------------------------------------
+  hiddenFeeds.forEach((feed) => {
+    feed.style.display = "";
 
-  function restoreFeed() {
-    const replacement =
-      document.getElementById("inspiration-instead");
-
-    if (replacement) {
-      replacement.remove();
-    }
-
-    const hiddenFeeds =
-      document.querySelectorAll(
-        '[data-inspiration-replaced="true"]'
-      );
-
-    hiddenFeeds.forEach((feed) => {
-      feed.style.display = "";
-
-      delete feed.dataset.inspirationReplaced;
-    });
-  }
+    delete feed.dataset.inspirationReplaced;
+  });
+}
 
 // --------------------------------------------------
 // EXPLORE PAGE
@@ -930,10 +983,6 @@ function hideExploreSuggestions() {
    * On the normal Explore page, hide Instagram's
    * photo/reel recommendation tiles while leaving
    * the search interface and navigation available.
-   *
-   * We hide the individual media links rather than
-   * hiding <main>, because <main> also contains the
-   * search interface.
    */
 
   const mediaLinks = main.querySelectorAll(
@@ -957,101 +1006,116 @@ function restoreExploreSuggestions() {
 
   hiddenLinks.forEach((link) => {
     link.style.display = "";
+
     delete link.dataset.inspirationExploreHidden;
   });
 }
 
-  // --------------------------------------------------
-  // FIND INSTAGRAM FEED
-  // --------------------------------------------------
+// --------------------------------------------------
+// FIND INSTAGRAM FEED
+// --------------------------------------------------
 
-  function findFeed() {
-    if (!isFeedPage()) {
-      return null;
-    }
-
-    /*
-     * We intentionally use <main> here instead of hiding
-     * the entire body/page.
-     *
-     * This keeps Instagram's navigation/sidebar available.
-     */
-    return document.querySelector("main");
+function findFeed() {
+  if (!isFeedPage()) {
+    return null;
   }
 
-  // --------------------------------------------------
-  // MAIN ATTEMPT
-  // --------------------------------------------------
+  /*
+   * We intentionally use <main> here instead of hiding
+   * the entire body/page.
+   *
+   * This keeps Instagram's navigation/sidebar available.
+   */
+  return document.querySelector("main");
+}
 
-  function attempt() {
-    /*
-     * Explore gets its own behavior:
-     * keep search available, but remove the
-     * default recommendation content.
-     */
-    if (isExplorePage()) {
-      restoreFeed();
-      hideExploreSuggestions();
-      return;
-    }
-  
-    /*
-     * Normal feed pages: Home and Reels.
-     */
-    if (isFeedPage()) {
-      restoreExploreSuggestions();
-  
-      const feed = findFeed();
-  
-      if (feed) {
-        hideFeed(feed);
-      }
-  
-      return;
-    }
-  
-    /*
-     * Any other Instagram page:
-     * restore everything.
-     */
+// --------------------------------------------------
+// MAIN ATTEMPT
+// --------------------------------------------------
+
+function attempt() {
+  /*
+   * If Instagram somehow reaches a Reels URL without
+   * the click handler catching it, redirect immediately.
+   */
+  if (isReelsPage()) {
+    blockReelsNavigation();
+    return;
+  }
+
+  /*
+   * Explore gets its own behavior:
+   * keep search available, but remove the
+   * default recommendation content.
+   */
+  if (isExplorePage()) {
     restoreFeed();
+    hideExploreSuggestions();
+    return;
+  }
+
+  /*
+   * Normal feed page: Home.
+   */
+  if (isFeedPage()) {
     restoreExploreSuggestions();
+
+    const feed = findFeed();
+
+    if (feed) {
+      hideFeed(feed);
+    }
+
+    return;
   }
 
-  // --------------------------------------------------
-  // SPA NAVIGATION
-  // --------------------------------------------------
+  /*
+   * Any other Instagram page:
+   * restore everything.
+   */
+  restoreFeed();
+  restoreExploreSuggestions();
+}
 
-  function handleNavigation() {
-    /*
-     * Instagram changes the URL before it finishes
-     * rendering the new page, so give it a moment.
-     */
+// --------------------------------------------------
+// SPA NAVIGATION
+// --------------------------------------------------
 
-    setTimeout(attempt, 50);
-    setTimeout(attempt, 250);
-    setTimeout(attempt, 750);
-  }
+function handleNavigation() {
+  /*
+   * Check immediately in case Instagram has just changed
+   * the URL to a Reels page.
+   */
+  blockReelsNavigation();
 
-  // Browser back / forward.
-  window.addEventListener(
-    "popstate",
-    handleNavigation
-  );
+  /*
+   * Instagram changes the URL before it finishes
+   * rendering the new page, so give it a moment.
+   */
+  setTimeout(attempt, 50);
+  setTimeout(attempt, 250);
+  setTimeout(attempt, 750);
+}
 
-  // Instagram uses history.pushState().
-  const originalPushState = history.pushState;
+// Browser back / forward.
+window.addEventListener(
+  "popstate",
+  handleNavigation
+);
 
-  history.pushState = function (...args) {
-    const result =
-      originalPushState.apply(this, args);
+// Instagram uses history.pushState().
+const originalPushState = history.pushState;
 
-    handleNavigation();
+history.pushState = function (...args) {
+  const result =
+    originalPushState.apply(this, args);
 
-    return result;
-  };
+  handleNavigation();
 
-  // Instagram may also use replaceState().
+  return result;
+};
+
+// Instagram may also use replaceState().
 const originalReplaceState = history.replaceState;
 
 history.replaceState = function (...args) {
@@ -1074,45 +1138,44 @@ setInterval(() => {
   }
 }, 250);
 
-  // --------------------------------------------------
-  // DOM CHANGES
-  // --------------------------------------------------
+// --------------------------------------------------
+// DOM CHANGES
+// --------------------------------------------------
 
-  /*
-   * Instagram renders content dynamically.
-   *
-   * We don't want to constantly create replacements,
-   * so attempt() checks whether one already exists.
-   */
-  const observer = new MutationObserver(() => {
-    attempt();
-  });
+/*
+ * Instagram renders content dynamically.
+ */
+const observer = new MutationObserver(() => {
+  attempt();
+});
 
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
+observer.observe(document.documentElement, {
+  childList: true,
+  subtree: true
+});
 
-  // --------------------------------------------------
-  // INITIAL LOAD
-  // --------------------------------------------------
+// --------------------------------------------------
+// INITIAL LOAD
+// --------------------------------------------------
 
-  /*
-   * Give Instagram time to render <main>.
-   */
-  let attempts = 0;
+/*
+ * Give Instagram time to render <main>.
+ */
+let attempts = 0;
 
-  const timer = setInterval(() => {
-    attempt();
+const timer = setInterval(() => {
+  attempt();
 
-    attempts++;
+  attempts++;
 
-    if (
-      document.getElementById("inspiration-instead") ||
-      attempts >= 30
-    ) {
-      clearInterval(timer);
-    }
-  }, 500);
-})();
+  if (
+    document.getElementById("inspiration-instead") ||
+    attempts >= 30
+  ) {
+    clearInterval(timer);
+  }
+}, 500);
 
+
+
+})(); 
